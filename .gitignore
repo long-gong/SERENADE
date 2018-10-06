@@ -477,3 +477,8 @@ ASALocalRun/
 
 # MSBuild Binary and Structured Log
 *.binlog
+
+
+cmake-*
+build 
+build-*
