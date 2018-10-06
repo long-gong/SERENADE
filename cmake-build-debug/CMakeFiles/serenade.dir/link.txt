@@ -1,2 +1,0 @@
-/usr/bin/ar qc libserenade.a  
-/usr/bin/ranlib libserenade.a
