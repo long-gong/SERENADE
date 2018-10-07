@@ -50,4 +50,10 @@ add_library(serenade STATIC serenade.hpp)
 target_include_directories(serenade PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(serenade PROPERTIES LINKER_LANGUAGE CXX)
 
-list(APPEND saber_libraries serenade)
+add_library(serena_graph_based serena_graph_based.hpp)
+target_include_directories(serena_graph_based PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+set_target_properties(serena_graph_based PROPERTIES LINKER_LANGUAGE CXX)
+
+list(APPEND saber_libraries serenade armadillo)
+
+add_subdirectory(test)
