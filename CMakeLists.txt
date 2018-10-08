@@ -5,7 +5,7 @@ project(SERENADE)
 set(CMAKE_CXX_STANDARD 11)
 
 option(USE_GTest "Use Google Test for testing" ON)
-
+option(Test_Extreme_Large_Cases "Turn on extreme large case tests" ON)
 
 set(saber_libraries "")
 if (USE_GTest)
@@ -49,11 +49,22 @@ endif()
 add_library(serenade STATIC serenade.hpp)
 target_include_directories(serenade PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(serenade PROPERTIES LINKER_LANGUAGE CXX)
+if (Test_Extreme_Large_Cases)
+    target_compile_definitions(serenade PRIVATE TEST_EXTREME_LARGE_CASES=1)
+    list(APPEND saber_libraries gmp)
+endif()
 
 add_library(serena_graph_based serena_graph_based.hpp)
 target_include_directories(serena_graph_based PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(serena_graph_based PROPERTIES LINKER_LANGUAGE CXX)
 
-list(APPEND saber_libraries serenade armadillo)
+add_library(csv_utils csv_utils.hpp)
+target_include_directories(csv_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+set_target_properties(csv_utils PROPERTIES LINKER_LANGUAGE CXX)
 
+list(APPEND saber_libraries serenade armadillo serena_graph_based csv_utils)
+
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${PROJECT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/py/iterations_def.csv DESTINATION ${PROJECT_BINARY_DIR}/data)
 add_subdirectory(test)
