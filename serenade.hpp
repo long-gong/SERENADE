@@ -59,9 +59,17 @@ public:
              std::vector<int> /* cycle types */,
              int /* # of non-ouroboros */> emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no_bs = false);
   std::tuple<std::vector<int> /* decisions */,
+             std::vector<int> /* # of iterations */,
+             std::vector<int> /* cycle types */,
+             int /* # of non-ouroboros */> approx(const perm_t &sr, const perm_t &sg, const matrix_t &Q);
+  std::tuple<std::vector<int> /* decisions */,
              std::vector<int> /* which cycle each vertex is on */,
              std::vector<int> /* cycle lengths */,
              std::vector<std::pair<int, int>> /* weights */> run(const perm_t &sr, const perm_t &sg, const matrix_t &Q);
+  std::tuple<std::vector<int> /* decisions */,
+             std::vector<int> /* which cycle each vertex is on */,
+             std::vector<int> /* cycle lengths */,
+             std::vector<std::pair<int, int>> /* weights */> run_approx(const perm_t &sr, const perm_t &sg, const matrix_t &Q, const std::vector<int>& ourobors);
 private:
   void init(const perm_t &sr, const perm_t &sg);
   void knowledge_disc(const matrix_t &Q, int max_iter, std::vector<int> &iterations);
@@ -393,6 +401,126 @@ void SERENADE::knowledge_disc(const matrix_t &Q, int max_iter, std::vector<int> 
     }
   }
 
+}
+std::tuple<std::vector<int> /* decisions */,
+           std::vector<int> /* # of iterations */,
+           std::vector<int> /* cycle types */,
+           int /* # of non-ouroboros */> SERENADE::approx(const SERENADE::perm_t &sr,
+                                                          const SERENADE::perm_t &sg,
+                                                          const SERENADE::matrix_t &Q) {
+  init(sr, sg);
+
+  std::vector<int> iterations(_port_num, 1);
+  std::vector<int> type_of_cycles(_port_num, 0);
+
+//  if (no_bs) {
+//    knowledge_disc(Q, _port_num / 2, iterations);
+//    return {_decisions, iterations, std::vector<int>(), 0};
+//  } else
+    knowledge_disc(Q, _max_iter, iterations);
+
+  // binary search
+  int n_cnt = 0;
+  int k = _max_iter;
+
+  for ( int i = 0;i < _port_num;++ i ) {
+    if (_decisions[i] == -1) {
+      auto ks = phi_opposite(i, k);
+      auto l = ks.leader;
+      if (i == l) {//
+        auto ks_prime = phi(i, k);
+        _decisions[l] = (ks_prime.wr >= ks_prime.wg ? 1 : 0);
+        ++n_cnt;
+      }
+      type_of_cycles[i] = 1;
+    }
+  }
+
+  for (int i = 0; i < _port_num; ++i) {
+    if (_decisions[i] == -1) {
+      auto ks = phi_opposite(i, k);
+      auto l = ks.leader;
+      _decisions[i] = _decisions[l];
+    }
+  }
+
+  return {_decisions, iterations, type_of_cycles, n_cnt};
+
+}
+std::tuple<std::vector<int> /* decisions */,
+           std::vector<int> /* which cycle each vertex is on */,
+           std::vector<int> /* cycle lengths */,
+           std::vector<std::pair<int, int>> /* weights */> SERENADE::run_approx(const SERENADE::perm_t &sr,
+                                                                                const SERENADE::perm_t &sg,
+                                                                                const SERENADE::matrix_t &Q,
+                                                                                const std::vector<int> &ourobors) {
+  auto N = sg.size();
+  std::vector<int> sg_inv(N, -1);
+  for (int i = 0; i < N; ++i) {
+    auto o = sg[i];
+    assert(sg_inv[o] == -1);
+    sg_inv[o] = i;
+  }
+  std::vector<int> decisions(N, -1);
+  std::vector<int> cycles(N, -1);
+  std::vector<int> cycle_lens;
+  std::vector<int> cycle_dec;
+  std::vector<std::pair<int, int> > cycle_weights;
+  std::vector<bool> visited(N, false);
+
+  for (int i = 0; i < N;) {
+    auto wr = 0;
+    auto wg = 0;
+    auto o = -1;
+    auto i_prime = -1;
+    auto c = 0;
+    auto c_id = cycle_lens.size();
+    while (i < N && visited[i])
+      ++i;
+    if (i == N)
+      break;
+    auto i_old = i;
+    auto leader = i;
+    do {
+      visited[i] = true;
+      cycles[i] = c_id;
+      o = sr[i];
+      i_prime = sg_inv[o];
+      wr += Q[i][o];
+      wg += Q[i_prime][o];
+      ++c;
+      i = i_prime;
+      leader = std::min(i, leader);
+    } while (!visited[i]);
+
+    cycle_lens.push_back(c);
+    cycle_weights.emplace_back(wr, wg);
+
+    if (ourobors[cycle_lens.back()] == 0)
+        cycle_dec.push_back((wr >= wg ? 1 : 0));
+    else {
+      auto cl = cycle_lens.back();
+      auto tmp_i = leader;
+      auto tmp_o = -1;
+      auto tmp_i_prime = -1;
+      while ( cl <= _port_num ) {
+        tmp_o = sr[tmp_i];
+        tmp_i_prime = sg_inv[tmp_o];
+        wr += Q[tmp_i][tmp_o];
+        wg += Q[tmp_i_prime][tmp_o];
+        tmp_i = tmp_i_prime;
+        ++ cl;
+      }
+      cycle_dec.push_back((wr >= wg ? 1 : 0));
+    }
+
+    i = i_old;
+  }
+
+  for (int i = 0; i < N; ++i)
+    decisions[i] = cycle_dec[cycles[i]];
+
+  return {decisions, cycles, cycle_lens, cycle_weights};
 }
 
 }
