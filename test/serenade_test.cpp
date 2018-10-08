@@ -255,7 +255,7 @@ TEST(SerenadeTest, KnowledgeDiscLarge) {
 }
 
 TEST(SerenadeTest, ExactEmu){
-  int n = 16;
+  int n = 1024;
   std::vector<int> perm(n, -1);
   std::vector<int> sr(n, -1);
   std::vector<int> sg(n, -1);
@@ -277,7 +277,7 @@ TEST(SerenadeTest, ExactEmu){
   }
 
   std::string ofile = fmt::format("../data/n={0}.txt", n);
-  
+
   std::ifstream in(ofile, std::ios::in);
   if ( !in.is_open() ) std::cerr << fmt::format("Can not open {0}", ofile) << std::endl;
   std::vector<int> ourob;
@@ -287,9 +287,9 @@ TEST(SerenadeTest, ExactEmu){
     in >> x;
     ourob.push_back(x);
   }
-  for ( const auto x: ourob) std::cout << x << " ";
-  std::cout << std::endl;
-  
+//  for ( const auto x: ourob) std::cout << x << " ";
+//  std::cout << std::endl;
+
   saber::SERENADE sde;
 
   for (int i = 0; i < n; ++i) {
@@ -298,7 +298,7 @@ TEST(SerenadeTest, ExactEmu){
     }
   }
 
-  int T = 1;
+  int T = 10000;
 
   for ( int t = 0; t < T;++ t ) {
     for (int i = 0; i < n; ++i) perm[i] = i;
@@ -313,12 +313,15 @@ TEST(SerenadeTest, ExactEmu){
     auto &cycle_lens = std::get<2>(res1);
     auto &cycles = std::get<1>(res1);
     //auto &iterations = std::get<1>(res2);
-    auto &cycle_weights = std::get<3>(res1);
+    //auto &cycle_weights = std::get<3>(res1);
     auto &cycle_types = std::get<2>(res2);
     for ( int i = 0;i < n;++ i) {
       int c = cycles[i];
       ASSERT_TRUE(c < n);
       EXPECT_EQ(cycle_types[i], ourob[cycle_lens[c]]);
+      if ( cycle_types[i] != ourob[cycle_lens[c]]){
+        std::cout << cycle_lens[c] << std::endl;
+      }
     }
   }
 }
