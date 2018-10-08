@@ -62,7 +62,7 @@ add_library(csv_utils csv_utils.hpp)
 target_include_directories(csv_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(csv_utils PROPERTIES LINKER_LANGUAGE CXX)
 
-list(APPEND saber_libraries serenade armadillo serena_graph_based csv_utils fmt)
+list(APPEND saber_libraries serenade armadillo serena_graph_based csv_utils fmt benchmark)
 
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data DESTINATION ${PROJECT_BINARY_DIR})

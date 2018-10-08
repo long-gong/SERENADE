@@ -386,6 +386,77 @@ TEST(SerenadeTest, Approx){
   }
 }
 
+
+TEST(SerenadeTest, Bsit){
+  int n = 128;
+  std::vector<int> perm(n, -1);
+  std::vector<int> sr(n, -1);
+  std::vector<int> sg(n, -1);
+  std::vector<std::vector<int> > Q(n, std::vector<int>(n, 0));
+  const int max_l = 20;
+
+  mat A = randu<mat>(n, n);
+  auto seed = size_t(1e9);
+  std::mt19937_64 g(seed);
+
+  std::string csvfile("../data/iterations_def.csv");
+  saber::CsvReader cr(csvfile);
+  cr.next();// skip header
+  auto vec = cr.next();
+  std::vector<int> its(1025, 0);
+  while (!vec.empty()) {
+    its[std::stoi(vec[0])] = std::stoi(vec[1]);
+    vec = cr.next();
+  }
+
+  std::string ofile = fmt::format("../data/n={0}.txt", n);
+
+  std::ifstream in(ofile, std::ios::in);
+  if ( !in.is_open() ) std::cerr << fmt::format("Can not open {0}", ofile) << std::endl;
+  std::vector<int> ourob;
+  ourob.push_back(-1);
+  while (!in.eof()) {
+    int x;
+    in >> x;
+    ourob.push_back(x);
+  }
+//  for ( const auto x: ourob) std::cout << x << " ";
+//  std::cout << std::endl;
+
+  saber::SERENADE sde;
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      Q[i][j] = int(A.at(i, j) * max_l);
+    }
+  }
+
+  int T = 1;
+
+  for ( int t = 0; t < T;++ t ) {
+    for (int i = 0; i < n; ++i) perm[i] = i;
+    std::copy(perm.begin(), perm.end(), sr.begin());
+    std::shuffle(perm.begin(), perm.end(), g);
+    std::copy(perm.begin(), perm.end(), sg.begin());
+
+    auto res1 = sde.run(sr, sg, Q);
+    auto res2 = sde.emulate(sr, sg, Q);
+
+    EXPECT_EQ(std::get<0>(res1), std::get<0>(res2));
+    auto &cycle_lens = std::get<2>(res1);
+    auto &cycles = std::get<1>(res1);
+    auto &bsit = std::get<3>(res2);
+    //auto &iterations = std::get<1>(res2);
+    //auto &cycle_weights = std::get<3>(res1);
+    auto &cycle_types = std::get<2>(res2);
+    for ( int i = 0;i < n;++ i) {
+      int c = cycles[i];
+      ASSERT_TRUE(c < n);
+      std::cout << cycle_lens[c] << " : " << bsit[i] << std::endl;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

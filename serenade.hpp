@@ -107,7 +107,7 @@ void SERENADE::init(const std::vector<int> &sr, const std::vector<int> &sg) {
     _decisions.resize(_port_num, -1);
 
     _knowledge_sets.resize(_port_num);
-    _B.resize(_port_num, std::vector<int>(_port_num, -1));
+    _B.resize(_port_num);
     _receive.resize(_port_num);
   }
 
@@ -115,6 +115,7 @@ void SERENADE::init(const std::vector<int> &sr, const std::vector<int> &sg) {
   std::fill(_decisions.begin(), _decisions.end(), -1);
   for (int i = 0; i < _port_num; ++i) {
     _knowledge_sets[i].clear();
+    _B[i].resize(_port_num, -1);
     std::fill(_B[i].begin(), _B[i].end(), -1);
     _receive[i].clear();
   }
@@ -150,7 +151,7 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
   } else
     knowledge_disc(Q, _max_iter, iterations);
 
-  std::vector<int> binary_search_iterations;
+  std::vector<int> binary_search_iterations(_port_num, 0);
   // binary search
   int n_cnt = 0;
   int k = _max_iter;
@@ -161,7 +162,7 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
       if (l == ks.id) {// the initial search admin
         auto bsit = 0;
         _decisions[l] = binary_search(i, k, ks.wr, ks.wg, l, bsit);
-        binary_search_iterations.push_back(bsit);
+        binary_search_iterations[l] = bsit;
         ++n_cnt;
       }
       type_of_cycles[i] = 1;
@@ -173,6 +174,7 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
       auto ks = phi_opposite(i, k);
       auto l = ks.leader;
       _decisions[i] = _decisions[l];
+      binary_search_iterations[i] = binary_search_iterations[l];
     }
   }
 
@@ -310,7 +312,7 @@ int SERENADE::binary_search(int i, int k, int wr, int wg, const int leader) {
     decision = binary_search(mid, k - 1, wr, wg, leader, bsit);
   } else {
     if (ks.leader == leader) {
-      decision = binary_search(i, k - 1, wr, wg, leader);
+      decision = binary_search(i, k - 1, wr, wg, leader, bsit);
     } else {
       wg -= ks.wg;
       wr -= ks.wr;
