@@ -57,6 +57,7 @@ public:
   std::tuple<std::vector<int> /* decisions */,
              std::vector<int> /* # of iterations */,
              std::vector<int> /* cycle types */,
+             std::vector<int> /* bsit */,
              int /* # of non-ouroboros */> emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no_bs = false);
   std::tuple<std::vector<int> /* decisions */,
              std::vector<int> /* # of iterations */,
@@ -79,9 +80,9 @@ private:
   void knowledge_disc_halt_check(int i, int k);
 
 #ifdef TEST_EXTREME_LARGE_CASES
-  int binary_search(int i, int k, mpz_int wr, mpz_int wg, int leader);
+  int binary_search(int i, int k, mpz_int wr, mpz_int wg, int leader, int& bsit);
 #else
-  int binary_search(int i, int k, int wr, int wg, int leader);
+  int binary_search(int i, int k, int wr, int wg, int leader, int& bsit);
 #endif
 
   KnowledgeSet phi(int i, int k);
@@ -134,6 +135,7 @@ void SERENADE::init(const std::vector<int> &sr, const std::vector<int> &sg) {
 std::tuple<std::vector<int> /* decisions */,
            std::vector<int> /* # of iterations */,
            std::vector<int> /* cycle types */,
+           std::vector<int> /* bsit */,
            int /* # of non-ouroboros */>
 SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no_bs) {
 
@@ -144,10 +146,11 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
 
   if (no_bs) {
     knowledge_disc(Q, _port_num / 2, iterations);
-    return {_decisions, iterations, std::vector<int>(), 0};
+    return {_decisions, iterations, std::vector<int>(), std::vector<int>(), 0};
   } else
     knowledge_disc(Q, _max_iter, iterations);
 
+  std::vector<int> binary_search_iterations;
   // binary search
   int n_cnt = 0;
   int k = _max_iter;
@@ -156,7 +159,9 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
       auto ks = phi_opposite(i, k);
       auto l = ks.leader;
       if (l == ks.id) {// the initial search admin
-        _decisions[l] = binary_search(i, k, ks.wr, ks.wg, l);
+        auto bsit = 0;
+        _decisions[l] = binary_search(i, k, ks.wr, ks.wg, l, bsit);
+        binary_search_iterations.push_back(bsit);
         ++n_cnt;
       }
       type_of_cycles[i] = 1;
@@ -171,7 +176,7 @@ SERENADE::emulate(const perm_t &sr, const perm_t &sg, const matrix_t &Q, bool no
     }
   }
 
-  return {_decisions, iterations, type_of_cycles, n_cnt};
+  return {_decisions, iterations, type_of_cycles, binary_search_iterations, n_cnt};
 
 }
 
@@ -286,7 +291,7 @@ void SERENADE::knowledge_disc_halt_check(int i, int k) {
 }
 
 #ifdef TEST_EXTREME_LARGE_CASES
-int SERENADE::binary_search(int i, int k, mpz_int wr, mpz_int wg, const int leader) {
+int SERENADE::binary_search(int i, int k, mpz_int wr, mpz_int wg, const int leader, int& bsit) {
 #else
 int SERENADE::binary_search(int i, int k, int wr, int wg, const int leader) {
 #endif
@@ -301,14 +306,16 @@ int SERENADE::binary_search(int i, int k, int wr, int wg, const int leader) {
   if (mid == leader) {
     wr -= ks.wr;
     wg -= ks.wg;
-    decision = binary_search(mid, k - 1, wr, wg, leader);
+    ++ bsit;
+    decision = binary_search(mid, k - 1, wr, wg, leader, bsit);
   } else {
     if (ks.leader == leader) {
       decision = binary_search(i, k - 1, wr, wg, leader);
     } else {
       wg -= ks.wg;
       wr -= ks.wr;
-      decision = binary_search(mid, k - 1, wr, wg, leader);
+      ++ bsit;
+      decision = binary_search(mid, k - 1, wr, wg, leader, bsit);
     }
   }
   return decision;
